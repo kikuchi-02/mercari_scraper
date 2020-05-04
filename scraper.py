@@ -129,4 +129,4 @@ if __name__ == "__main__":
         romaji = convert_roman_from_japanese(args.word)
         time_str = datetime.today().isoformat(timespec='minutes')
         df = pd.DataFrame.from_records(all_items)
-        df.to_feather(f'{romaji}{time_str}.feather')
+        df.to_feather(f'scraped_data/{romaji}{time_str}.feather')
