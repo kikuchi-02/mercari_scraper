@@ -1,3 +1,5 @@
+import asyncio
+import functools
 import os
 import pickle
 import re
@@ -53,6 +55,29 @@ def get_page_items(driver, strict: bool, keyword='') -> List[dict]:
             item_box.find_element_by_css_selector('a').get_attribute('href')
         })
     return page_items
+
+
+async def async_get_page_items(item_box):
+    def create_report(item_box):
+        return {
+            'title':
+            item_box.find_element_by_css_selector('img').get_attribute('alt'),
+            'price':
+            int(
+                re.sub(
+                    '¥|,', '',
+                    item_box.find_element_by_class_name(
+                        'items-box-price').text)),
+            'is_sold_out':
+            not item_box.find_elements_by_class_name('item-sold-out-badge'),
+            'link':
+            item_box.find_element_by_css_selector('a').get_attribute('href')
+        }
+
+    loop = asyncio.get_event_loop()
+    func = functools.partial(create_report, item_box)
+    res = await loop.run_in_executor(None, func)
+    return res
 
 
 def next_page() -> Optional['WebElement']:
@@ -112,7 +137,14 @@ if __name__ == "__main__":
         ).click()
         time.sleep(3)
         all_items = []
+        # loop = asyncio.get_event_loop()
         while True:
+            # items = loop.run_until_complete(
+            #     asyncio.gather(*[
+            #         async_get_page_items(item_box) for item_box in
+            #         driver.find_elements_by_class_name('items-box')
+            #     ]))
+            # all_items.extend(items)
             all_items.extend(get_page_items(driver, args.strict))
             next_page_elm = next_page()
 
@@ -125,7 +157,7 @@ if __name__ == "__main__":
             print(f'next page: {next_page_elm.text}')
 
             next_page_elm.click()
-
+        # loop.close()
         romaji = convert_roman_from_japanese(args.word)
         time_str = datetime.today().isoformat(timespec='minutes')
         df = pd.DataFrame.from_records(all_items)
